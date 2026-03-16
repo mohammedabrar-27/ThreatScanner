@@ -1,0 +1,96 @@
+﻿{% extends "base.html" %}
+{% block title %}Dashboard | ThreatScanner{% endblock %}
+{% block content %}
+<section class="hero-panel rounded-4 p-4 p-lg-5 mb-4">
+    <div class="row align-items-center g-4">
+        <div class="col-lg-8">
+            <p class="eyebrow mb-2">Security Operations Dashboard</p>
+            <h1 class="display-6 fw-semibold mb-3">Monitor files and URLs from one secure workspace.</h1>
+            <p class="lead text-secondary mb-0">Scan suspicious documents, inspect links for risk, and keep a complete record of results for your project demo.</p>
+        </div>
+        <div class="col-lg-4">
+            <div class="stats-grid">
+                <div class="metric-card">
+                    <span>Total File Scans</span>
+                    <strong>{{ counts.file_scans }}</strong>
+                </div>
+                <div class="metric-card">
+                    <span>Total URL Scans</span>
+                    <strong>{{ counts.url_scans }}</strong>
+                </div>
+                <div class="metric-card accent">
+                    <span>Threat Alerts</span>
+                    <strong>{{ counts.threats }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h4">File Malware Scan</h2>
+                <p class="text-secondary">Upload PDF, DOCX, or ZIP files for secure file scanning.</p>
+                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">Open File Scanner</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h4">URL Security Scan</h2>
+                <p class="text-secondary">Analyze websites for suspicious scripts, redirects, and vulnerabilities.</p>
+                <a href="{{ url_for('scan_url') }}" class="btn btn-outline-primary">Scan a URL</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body">
+                <h2 class="h4">Scan History</h2>
+                <p class="text-secondary">Review previous results for each authenticated user from one secure dashboard.</p>
+                <a href="{{ url_for('history') }}" class="btn btn-outline-dark">View History</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="mt-4">
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h4 mb-0">Recent Activity</h2>
+                <a href="{{ url_for('history') }}" class="small">See all scans</a>
+            </div>
+            {% if recent_scans %}
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Target</th>
+                            <th>Result</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scan in recent_scans %}
+                        <tr>
+                            <td class="text-capitalize">{{ scan.scan_type }}</td>
+                            <td>{{ scan.target }}</td>
+                            <td><span class="badge text-bg-light border">{{ scan.result }}</span></td>
+                            <td>{{ scan.created_at.strftime('%d %b %Y %I:%M %p') }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-secondary mb-0">No scans yet. Start with a file or URL scan from the dashboard.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

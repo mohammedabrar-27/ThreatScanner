@@ -1,0 +1,40 @@
+﻿{% extends "base.html" %}
+{% block title %}URL Scanner | ThreatScanner{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">URL Security Scanner</h1>
+                <p class="text-secondary">This page connects to OWASP ZAP at <code>{{ zap_host }}</code> and rates URLs as Safe, Medium Risk, or High Risk.</p>
+                <form method="post" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.url.label(class="form-label") }}
+                        {{ form.url(class="form-control", placeholder="https://example.com") }}
+                        {% for error in form.url.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h2 class="h4 mb-3">Latest Result</h2>
+                {% if scan_result %}
+                <div class="result-card">
+                    <div class="result-badge">{{ scan_result.status }}</div>
+                    <pre class="result-details">{{ scan_result.details }}</pre>
+                </div>
+                {% else %}
+                <p class="text-secondary mb-0">Paste a URL and submit the form to begin the ZAP scan.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

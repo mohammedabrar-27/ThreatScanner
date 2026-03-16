@@ -1,0 +1,43 @@
+﻿{% extends "base.html" %}
+{% block title %}Scan History | ThreatScanner{% endblock %}
+{% block content %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h1 class="h3 mb-1">Scan History</h1>
+                <p class="text-secondary mb-0">Every file and URL scan for your account is stored here.</p>
+            </div>
+        </div>
+
+        {% if scans %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Target</th>
+                        <th>Result</th>
+                        <th>Details</th>
+                        <th>Timestamp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in scans %}
+                    <tr>
+                        <td class="text-capitalize">{{ scan.scan_type }}</td>
+                        <td class="history-target">{{ scan.target }}</td>
+                        <td><span class="badge text-bg-light border">{{ scan.result }}</span></td>
+                        <td class="history-details">{{ scan.details }}</td>
+                        <td>{{ scan.created_at.strftime('%d %b %Y %I:%M %p') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-secondary mb-0">No history available yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

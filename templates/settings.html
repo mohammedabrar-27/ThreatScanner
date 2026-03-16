@@ -1,0 +1,16 @@
+﻿{% extends "base.html" %}
+{% block title %}Settings | ThreatScanner{% endblock %}
+{% block content %}
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+        <h1 class="h3 mb-3">Settings</h1>
+        <p class="text-secondary">This demo page summarizes the security controls used by your application.</p>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item px-0"><strong>Authentication:</strong> Flask-Login session management with password hashing.</li>
+            <li class="list-group-item px-0"><strong>File Security:</strong> Temporary upload storage outside static folders and automatic deletion after scanning.</li>
+            <li class="list-group-item px-0"><strong>URL Scanning:</strong> Threat inspection integration for active scan alerts.</li>
+            <li class="list-group-item px-0"><strong>Upload Limit:</strong> 16 MB maximum request size.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

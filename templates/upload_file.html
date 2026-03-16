@@ -1,0 +1,40 @@
+﻿{% extends "base.html" %}
+{% block title %}File Scanner | ThreatScanner{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h1 class="h3 mb-3">File Malware Scanner</h1>
+                <p class="text-secondary">Supported formats: PDF, DOCX, ZIP. Files are stored temporarily outside public folders, scanned, and then deleted.</p>
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ form.file.label(class="form-label") }}
+                        {{ form.file(class="form-control") }}
+                        {% for error in form.file.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-4">
+                <h2 class="h4 mb-3">Latest Result</h2>
+                {% if scan_result %}
+                <div class="result-card">
+                    <div class="result-badge">{{ scan_result.status }}</div>
+                    <pre class="result-details">{{ scan_result.details }}</pre>
+                </div>
+                {% else %}
+                <p class="text-secondary mb-0">Your scan result will appear here after you upload a file.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
