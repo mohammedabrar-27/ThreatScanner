@@ -1,21 +1,20 @@
-﻿import os
+import os
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, url_for
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_wtf import FlaskForm
 from flask_wtf.file import FileAllowed, FileField, FileRequired
-from werkzeug.datastructures import CombinedMultiDict
 from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 from wtforms import PasswordField, StringField, SubmitField
 from wtforms.validators import DataRequired, Email, EqualTo, Length, ValidationError
 
+from clamav_scanner import scan_file_with_clamav
 from config import Config, INSTANCE_DIR, UPLOAD_DIR
 from models import ScanHistory, User, db
-from scanner import run_file_scan, run_url_scan
-from zap_scanner import validate_url
+from zap_scanner import scan_url_with_zap, validate_url
 
 
 class RegistrationForm(FlaskForm):
@@ -63,6 +62,9 @@ class URLScanForm(FlaskForm):
             raise ValidationError("Enter a valid URL starting with http:// or https://.")
 
 
+login_manager = LoginManager()
+
+
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -71,15 +73,9 @@ def create_app():
     UPLOAD_DIR.mkdir(exist_ok=True)
 
     db.init_app(app)
-
-    login_manager = LoginManager()
     login_manager.login_view = "login"
     login_manager.login_message_category = "warning"
     login_manager.init_app(app)
-
-    @login_manager.user_loader
-    def load_user(user_id):
-        return db.session.get(User, int(user_id))
 
     @app.errorhandler(RequestEntityTooLarge)
     def handle_large_file(_error):
@@ -87,14 +83,12 @@ def create_app():
         return redirect(url_for("upload_file"))
 
     @app.context_processor
-    def inject_hostname():
+    def inject_layout_data():
         return {"zap_host": urlparse(app.config["ZAP_API_URL"]).netloc}
 
     @app.route("/")
     def index():
-        if current_user.is_authenticated:
-            return redirect(url_for("dashboard"))
-        return redirect(url_for("login"))
+        return redirect(url_for("dashboard" if current_user.is_authenticated else "login"))
 
     @app.route("/register", methods=["GET", "POST"])
     def register():
@@ -103,16 +97,12 @@ def create_app():
 
         form = RegistrationForm()
         if form.validate_on_submit():
-            user = User(
-                username=form.username.data.strip(),
-                email=form.email.data.strip().lower(),
-            )
+            user = User(username=form.username.data.strip(), email=form.email.data.strip().lower())
             user.set_password(form.password.data)
             db.session.add(user)
             db.session.commit()
             flash("Registration successful. Please log in.", "success")
             return redirect(url_for("login"))
-
         return render_template("register.html", form=form)
 
     @app.route("/login", methods=["GET", "POST"])
@@ -127,9 +117,7 @@ def create_app():
                 login_user(user)
                 flash("Welcome back.", "success")
                 return redirect(url_for("dashboard"))
-
             flash("Invalid email or password.", "danger")
-
         return render_template("login.html", form=form)
 
     @app.route("/logout")
@@ -142,52 +130,34 @@ def create_app():
     @app.route("/dashboard")
     @login_required
     def dashboard():
-        recent_scans = (
-            ScanHistory.query.filter_by(user_id=current_user.id)
-            .order_by(ScanHistory.created_at.desc())
-            .limit(5)
-            .all()
-        )
+        scans = ScanHistory.query.filter_by(user_id=current_user.id)
+        recent_scans = scans.order_by(ScanHistory.created_at.desc()).limit(5).all()
         counts = {
-            "file_scans": ScanHistory.query.filter_by(user_id=current_user.id, scan_type="file").count(),
-            "url_scans": ScanHistory.query.filter_by(user_id=current_user.id, scan_type="url").count(),
-            "threats": ScanHistory.query.filter(
-                ScanHistory.user_id == current_user.id,
-                ScanHistory.result.in_(["Malware Detected", "High Risk", "Medium Risk"]),
-            ).count(),
+            "file_scans": scans.filter_by(scan_type="file").count(),
+            "url_scans": scans.filter_by(scan_type="url").count(),
+            "threats": scans.filter(ScanHistory.result.in_(["Malware Detected", "High Risk", "Medium Risk"])).count(),
         }
         return render_template("dashboard.html", recent_scans=recent_scans, counts=counts)
 
     @app.route("/upload-file", methods=["GET", "POST"])
     @login_required
     def upload_file():
-        form = FileScanForm(CombinedMultiDict((request.files, request.form)))
+        form = FileScanForm()
         scan_result = None
 
         if form.validate_on_submit():
             uploaded_file = form.file.data
             original_name = secure_filename(uploaded_file.filename or "")
-            suffix = Path(original_name).suffix.lower()
-            temp_name = f"{current_user.id}_{os.urandom(8).hex()}{suffix}"
-            temp_path = Path(app.config["UPLOAD_FOLDER"]) / temp_name
+            if not original_name:
+                flash("Please choose a valid file.", "danger")
+                return render_template("upload_file.html", form=form, scan_result=None)
 
+            temp_path = Path(app.config["UPLOAD_FOLDER"]) / f"{current_user.id}_{os.urandom(8).hex()}{Path(original_name).suffix.lower()}"
             try:
                 uploaded_file.save(temp_path)
-                scan_result = run_file_scan(temp_path, command=app.config["CLAMAV_COMMAND"])
-
-                history = ScanHistory(
-                    user_id=current_user.id,
-                    scan_type="file",
-                    target=original_name,
-                    result=scan_result["status"],
-                    details=scan_result["details"],
-                )
-                db.session.add(history)
-                db.session.commit()
-                if scan_result["status"] == "Clean":
-                    flash("File scan completed successfully.", "success")
-                else:
-                    flash(f"File scan finished with status: {scan_result['status']}", "warning")
+                scan_result = scan_file_with_clamav(temp_path, command=app.config["CLAMAV_COMMAND"])
+                save_scan("file", original_name, scan_result)
+                flash_scan_result("File scan", scan_result["status"])
             finally:
                 if temp_path.exists():
                     temp_path.unlink()
@@ -202,37 +172,21 @@ def create_app():
 
         if form.validate_on_submit():
             target_url = form.url.data.strip()
-            scan_result = run_url_scan(
+            scan_result = scan_url_with_zap(
                 target_url,
                 api_url=app.config["ZAP_API_URL"],
                 api_key=app.config["ZAP_API_KEY"],
                 timeout_seconds=app.config["ZAP_SCAN_TIMEOUT"],
             )
-
-            history = ScanHistory(
-                user_id=current_user.id,
-                scan_type="url",
-                target=target_url,
-                result=scan_result["status"],
-                details=scan_result["details"],
-            )
-            db.session.add(history)
-            db.session.commit()
-            if scan_result["status"] == "Safe":
-                flash("URL scan completed successfully.", "success")
-            else:
-                flash(f"URL scan finished with status: {scan_result['status']}", "warning")
+            save_scan("url", target_url, scan_result)
+            flash_scan_result("URL scan", scan_result["status"])
 
         return render_template("scan_url.html", form=form, scan_result=scan_result)
 
     @app.route("/history")
     @login_required
     def history():
-        scans = (
-            ScanHistory.query.filter_by(user_id=current_user.id)
-            .order_by(ScanHistory.created_at.desc())
-            .all()
-        )
+        scans = ScanHistory.query.filter_by(user_id=current_user.id).order_by(ScanHistory.created_at.desc()).all()
         return render_template("history.html", scans=scans)
 
     @app.route("/settings")
@@ -244,6 +198,31 @@ def create_app():
         db.create_all()
 
     return app
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))
+
+
+def save_scan(scan_type, target, scan_result):
+    db.session.add(
+        ScanHistory(
+            user_id=current_user.id,
+            scan_type=scan_type,
+            target=target,
+            result=scan_result["status"],
+            details=scan_result["details"],
+        )
+    )
+    db.session.commit()
+
+
+def flash_scan_result(label, status):
+    if status in {"Clean", "Safe"}:
+        flash(f"{label} completed successfully.", "success")
+    else:
+        flash(f"{label} finished with status: {status}", "warning")
 
 
 app = create_app()
