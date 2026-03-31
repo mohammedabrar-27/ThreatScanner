@@ -1,0 +1,17 @@
+﻿{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run ThreatScanner",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py",
+      "console": "integratedTerminal",
+      "python": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "FLASK_ENV": "development"
+      }
+    }
+  ]
+}

@@ -6,16 +6,22 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-4">
                 <h1 class="h3 mb-3">URL Security Scanner</h1>
-                <p class="text-secondary">This page connects to OWASP ZAP at <code>{{ zap_host }}</code> and rates URLs as Safe, Medium Risk, or High Risk.</p>
-                <form method="post" novalidate>
-                    {{ form.hidden_tag() }}
+                <p class="text-secondary">This page scans URLs with <code>{{ url_scanner_name }}</code> and rates them as Safe, Medium Risk, or High Risk.</p>
+                <form id="url-scan-form" method="post" novalidate>
                     <div class="mb-3">
-                        {{ form.url.label(class="form-label") }}
-                        {{ form.url(class="form-control", placeholder="https://example.com") }}
-                        {% for error in form.url.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                        <label class="form-label" for="url">Target URL</label>
+                        <input class="form-control" id="url" name="url" type="url" placeholder="https://example.com" required>
                     </div>
                     <div class="d-grid">
-                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                        <button class="btn btn-primary btn-lg" id="url-scan-button" type="submit">Scan URL</button>
+                    </div>
+                    <div class="scan-status" id="url-scan-status" hidden>
+                        <span class="scan-icon" aria-hidden="true"></span>
+                        <span class="scan-label-wrap">
+                            <span class="scan-label">Scanning URL</span>
+                            <small class="scan-subtext">Running live web checks and risk evaluation</small>
+                        </span>
+                        <strong class="scan-timer" id="url-scan-timer">0s</strong>
                     </div>
                 </form>
             </div>
@@ -25,16 +31,100 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-4">
                 <h2 class="h4 mb-3">Latest Result</h2>
+                <div id="url-result-panel">
                 {% if scan_result %}
-                <div class="result-card">
-                    <div class="result-badge">{{ scan_result.status }}</div>
-                    <pre class="result-details">{{ scan_result.details }}</pre>
+                <div class="result-card result-card-{{ scan_result.tone }}">
+                    <div class="analysis-header">
+                        <div>
+                            <div class="result-badge">{{ scan_result.verdict }}</div>
+                            <h3 class="analysis-title">{{ scan_result.engine }} Analysis</h3>
+                            <p class="analysis-summary mb-0">{{ scan_result.summary }}</p>
+                        </div>
+                    </div>
+
+                    <div class="analysis-grid">
+                        <div class="analysis-block">
+                            <h4>Key Highlights</h4>
+                            <ul class="analysis-list">
+                                {% for item in scan_result.highlights %}
+                                <li>{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        <div class="analysis-block">
+                            <h4>Recommended Action</h4>
+                            <ul class="analysis-list">
+                                {% for item in scan_result.recommendations %}
+                                <li>{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="analysis-block">
+                        <h4>What This Could Affect</h4>
+                        <ul class="analysis-list">
+                            {% for item in scan_result.impact %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <div class="analysis-block analysis-raw">
+                        <h4>Raw Scanner Output</h4>
+                        <pre class="result-details">{{ scan_result.raw_details }}</pre>
+                    </div>
                 </div>
                 {% else %}
-                <p class="text-secondary mb-0">Paste a URL and submit the form to begin the ZAP scan.</p>
+                <p class="text-secondary mb-0">Paste a URL and submit the form to begin the security scan.</p>
                 {% endif %}
+                </div>
             </div>
         </div>
     </div>
 </div>
+<div class="modal fade" id="url-scan-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content scan-modal">
+            <div class="modal-body p-4">
+                <h3 class="h5 mb-2">Deep scan still running</h3>
+                <p class="mb-2">This URL needs more time for a precise security review.</p>
+                <p class="text-secondary mb-0">The scanner is checking more response patterns and vulnerability indicators. You can keep waiting for the final result.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+document.getElementById("url-scan-form")?.addEventListener("submit", function () {
+    const status = document.getElementById("url-scan-status");
+    const button = document.getElementById("url-scan-button");
+    const timer = document.getElementById("url-scan-timer");
+    const label = document.querySelector("#url-scan-status .scan-label");
+    const subtext = document.querySelector("#url-scan-status .scan-subtext");
+    const modalElement = document.getElementById("url-scan-modal");
+    const modal = modalElement ? new bootstrap.Modal(modalElement) : null;
+    const resultPanel = document.getElementById("url-result-panel");
+    if (status) status.hidden = false;
+    if (resultPanel) resultPanel.hidden = true;
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Scanning...";
+    }
+    if (timer) {
+        let seconds = 0;
+        timer.textContent = "0s";
+        window.setInterval(function () {
+            seconds += 1;
+            timer.textContent = seconds + "s";
+            if (seconds === 30) {
+                if (label) label.textContent = "Deep scan in progress";
+                if (subtext) subtext.textContent = "Heavier analysis is still running for a more precise result";
+                if (modal) modal.show();
+            }
+        }, 1000);
+    }
+});
+</script>
 {% endblock %}

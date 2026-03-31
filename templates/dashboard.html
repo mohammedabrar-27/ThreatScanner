@@ -2,13 +2,14 @@
 {% block title %}Dashboard | ThreatScanner{% endblock %}
 {% block content %}
 <section class="hero-panel rounded-4 p-4 p-lg-5 mb-4">
-    <div class="row align-items-center g-4">
-        <div class="col-lg-8">
-            <p class="eyebrow mb-2">Security Operations Dashboard</p>
-            <h1 class="display-6 fw-semibold mb-3">Monitor files and URLs from one secure workspace.</h1>
-            <p class="lead text-secondary mb-0">Scan suspicious documents, inspect links for risk, and keep a complete record of results for your project demo.</p>
+    <div class="hero-grid">
+        <div>
+            <p class="eyebrow mb-2">threat analysis Dashboard</p>
+            <h1 class="display-6 fw-semibold mb-3">Monitor and analyze files and URLs from a unified security platform.</h1>
+            <p class="lead text-secondary mb-4">Scan files for malware and analyze URLs for security threats and vulnerabilities, and receive risk insights with detailed recommendations based on rule-based analysis.</p>
+           
         </div>
-        <div class="col-lg-4">
+        <div class="hero-side">
             <div class="stats-grid">
                 <div class="metric-card">
                     <span>Total File Scans</span>
@@ -23,35 +24,48 @@
                     <strong>{{ counts.threats }}</strong>
                 </div>
             </div>
+            <div class="hero-terminal mt-3">
+               
+            </div>
         </div>
     </div>
 </section>
 
+{% if not is_logged_in %}
+<div class="alert alert-info border-0 shadow-sm mb-4" role="alert">
+    Explore the dashboard freely. Login is required only when you start a file scan, URL scan, or open your scan history.
+</div>
+{% endif %}
+
 <div class="row g-4">
     <div class="col-lg-4">
-        <div class="card h-100 border-0 shadow-sm">
+        <div class="card h-100 border-0 shadow-sm feature-card">
             <div class="card-body">
                 <h2 class="h4">File Malware Scan</h2>
                 <p class="text-secondary">Upload PDF, DOCX, or ZIP files for secure file scanning.</p>
-                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">Open File Scanner</a>
+                <a href="{{ url_for('upload_file') }}" class="btn btn-primary">Scan File Now</a>
             </div>
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="card h-100 border-0 shadow-sm">
+        <div class="card h-100 border-0 shadow-sm feature-card">
             <div class="card-body">
                 <h2 class="h4">URL Security Scan</h2>
                 <p class="text-secondary">Analyze websites for suspicious scripts, redirects, and vulnerabilities.</p>
-                <a href="{{ url_for('scan_url') }}" class="btn btn-outline-primary">Scan a URL</a>
+                <a href="{{ url_for('scan_url') }}" class="btn btn-primary">Analyze URL</a>
             </div>
         </div>
     </div>
     <div class="col-lg-4">
-        <div class="card h-100 border-0 shadow-sm">
+        <div class="card h-100 border-0 shadow-sm feature-card">
             <div class="card-body">
                 <h2 class="h4">Scan History</h2>
                 <p class="text-secondary">Review previous results for each authenticated user from one secure dashboard.</p>
+                {% if is_logged_in %}
                 <a href="{{ url_for('history') }}" class="btn btn-outline-dark">View History</a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-outline-dark">Login to View History</a>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -62,7 +76,9 @@
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2 class="h4 mb-0">Recent Activity</h2>
-                <a href="{{ url_for('history') }}" class="small">See all scans</a>
+                <a href="{{ url_for('history') if is_logged_in else url_for('login') }}" class="small">
+                    {{ "See all scans" if is_logged_in else "Login to view history" }}
+                </a>
             </div>
             {% if recent_scans %}
             <div class="table-responsive">
@@ -81,7 +97,7 @@
                             <td class="text-capitalize">{{ scan.scan_type }}</td>
                             <td>{{ scan.target }}</td>
                             <td><span class="badge text-bg-light border">{{ scan.result }}</span></td>
-                            <td>{{ scan.created_at.strftime('%d %b %Y %I:%M %p') }}</td>
+                            <td>{{ scan.created_at_display }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

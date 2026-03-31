@@ -29,7 +29,7 @@
                         <td class="history-target">{{ scan.target }}</td>
                         <td><span class="badge text-bg-light border">{{ scan.result }}</span></td>
                         <td class="history-details">{{ scan.details }}</td>
-                        <td>{{ scan.created_at.strftime('%d %b %Y %I:%M %p') }}</td>
+                        <td>{{ scan.created_at_display }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
