@@ -24,12 +24,12 @@ app.config.update(
     SECRET_KEY=os.environ.get("SECRET_KEY", "change-this-secret-key"),
     MAX_CONTENT_LENGTH=16 * 1024 * 1024,
     CLAMAV_COMMAND=os.environ.get("CLAMAV_COMMAND", r"C:\Program Files\ClamAV\clamscan.exe"),
-    CLAMAV_SCAN_TIMEOUT=int(os.environ.get("CLAMAV_SCAN_TIMEOUT", "120")),
+    CLAMAV_SCAN_TIMEOUT=int(os.environ.get("CLAMAV_SCAN_TIMEOUT", "30")),
     NUCLEI_COMMAND=os.environ.get(
         "NUCLEI_COMMAND",
         r"C:\Users\MOHAMMED ABRAR KHAN\Downloads\nuclei_3.7.1_windows_amd64\nuclei.exe",
     ),
-    NUCLEI_SCAN_TIMEOUT=int(os.environ.get("NUCLEI_SCAN_TIMEOUT", "120")),
+    NUCLEI_SCAN_TIMEOUT=int(os.environ.get("NUCLEI_SCAN_TIMEOUT", "30")),
 )
 
 INSTANCE_DIR.mkdir(exist_ok=True)
@@ -82,6 +82,7 @@ def inject_template_data():
     return {
         "is_logged_in": bool(session.get("user_id")),
         "user_name": session.get("username", ""),
+        "user_email": session.get("email", ""),
         "url_scanner_name": "Nuclei",
     }
 
@@ -137,7 +138,8 @@ def login():
         if user and check_password_hash(user["password_hash"], password):
             session["user_id"] = user["id"]
             session["username"] = user["username"]
-            flash("Welcome back.", "success")
+            session["email"] = user["email"]
+            flash("Login successful.", "success")
             return redirect(url_for("dashboard"))
 
         flash("Invalid email or password.", "danger")
